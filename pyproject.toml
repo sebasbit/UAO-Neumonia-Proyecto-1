@@ -1,0 +1,23 @@
+[project]
+name = "uao-neumonia-proyecto-1"
+version = "0.1.0"
+description = "Proyecto de neumonía del curso Desarrollo de Proyectos de Inteligencia Artificial"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "img2pdf>=0.6.3",
+    "matplotlib>=3.10.8",
+    "opencv-python>=4.11.0.86",
+    "pandas>=2.3.3",
+    "pillow>=12.1.0",
+    "pyautogui>=0.9.54",
+    "pydicom>=3.0.1",
+    "python-xlib>=0.33",
+    "tensorflow==2.15.0",
+    "tkcap>=0.0.4",
+]
+
+[tool.uv]
+override-dependencies = [
+    "tensorflow-io-gcs-filesystem==0.31.0"
+]

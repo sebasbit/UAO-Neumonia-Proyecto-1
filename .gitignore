@@ -7,14 +7,26 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
+
+# UV
+uv.lock
 
 # Project files
 .idea/
 .vscode/
+
+# macOS
+.DS_Store
+
+# Data / outputs
 *.h5
 *.csv
 *.pdf
 *.jpg
 *.jpeg
 *.png
+
+# Optional caches
+.matplotlib/
+

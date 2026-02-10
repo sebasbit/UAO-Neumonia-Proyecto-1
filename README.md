@@ -18,11 +18,15 @@ A continuación le explicaremos cómo empezar a utilizarla.
 Requerimientos necesarios para el funcionamiento:
 
 - Instale UV para Windows siguiendo las siguientes instrucciones: https://docs.astral.sh/uv/getting-started/installation/
-- Abra Anaconda Prompt y ejecute las siguientes instrucciones:
-
+- Abra la terminal y ejecute las siguientes instrucciones:
   ```
   uv sync
   uv run detector_neumonia.py
+  ```
+  
+  En caso de errores por la librería Tensorflow en Windows, ejecutar:
+  ```
+  uv pip install tensorflow==2.15.0
   ```
 
 Uso de la Interfaz Gráfica:
@@ -33,6 +37,16 @@ Uso de la Interfaz Gráfica:
 - Presione el botón 'Guardar' para almacenar la información del paciente en un archivo excel con extensión .csv
 - Presione el botón 'PDF' para descargar un archivo PDF con la información desplegada en la interfaz
 - Presión el botón 'Borrar' si desea cargar una nueva imagen
+
+---
+
+## Ejecución de Tests
+
+Para ejecutar los tests del proyecto, abra la terminal en el directorio del proyecto y ejecute el siguiente comando:
+
+  ```bash
+  uv run pytest
+  ```
 
 ---
 

@@ -15,3 +15,6 @@ wheels/
 *.h5
 *.csv
 *.pdf
+*.jpg
+*.jpeg
+*.png

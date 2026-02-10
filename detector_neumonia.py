@@ -3,6 +3,8 @@
 
 import os
 import csv
+import time
+
 import cv2
 from keras import backend as K
 import numpy as np
@@ -13,6 +15,8 @@ import tkcap
 from tkinter import Tk, StringVar, Text, END
 from tkinter import ttk, font, filedialog
 from tkinter.messagebox import askokcancel, showinfo, WARNING
+
+from tkcap.exceptions import ImageNameExistsError
 
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.experimental.output_all_intermediates(True)
@@ -224,14 +228,24 @@ class App:
 
     def create_pdf(self):
         cap = tkcap.CAP(self.root)
-        ID = "Reporte" + str(self.reportID) + ".jpg"
-        img = cap.capture(ID)
-        img = Image.open(ID)
-        img = img.convert("RGB")
-        pdf_path = r"Reporte" + str(self.reportID) + ".pdf"
-        img.save(pdf_path)
-        self.reportID += 1
-        showinfo(title="PDF", message="El PDF fue generado con éxito.")
+        patient_id = self.text1.get()
+        if not patient_id:
+            patient_id = "Desconocido"
+        timestamp = int(time.time())
+        img_filename = f"Reporte_{patient_id}_{timestamp}.jpg"
+        pdf_filename = f"Reporte_{patient_id}_{timestamp}.pdf"
+
+        try:
+            cap.capture(img_filename)
+            img = Image.open(img_filename)
+            img = img.convert("RGB")
+            img.save(pdf_filename)
+            showinfo(title="PDF", message=f"El PDF '{pdf_filename}' fue generado con éxito.")
+        except ImageNameExistsError:
+            showinfo(title="Error", message=f"Ocurrió un error al generar PDF")
+        finally:
+            if os.path.exists(img_filename):
+                os.remove(img_filename)
 
     def delete(self):
         answer = askokcancel(

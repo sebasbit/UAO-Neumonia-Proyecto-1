@@ -20,7 +20,7 @@ def test_resize_image(dummy_image_color):
     """Verifica que resize_image cambie correctamente las dimensiones de la imagen."""
     resized_img = preprocess_img.resize_image(dummy_image_color, size=(512, 512))
     assert resized_img.shape[:2] == (512, 512)
-    assert resized_img.dtype == np.uint8  # Should maintain original dtype
+    assert resized_img.dtype == np.uint8
 
 
 def test_convert_to_grayscale_color_image(dummy_image_color):
@@ -34,7 +34,7 @@ def test_apply_clahe(dummy_image_grayscale):
     """Verifica que apply_clahe devuelve una imagen con la misma forma y tipo."""
     clahe_img = preprocess_img.apply_clahe(dummy_image_grayscale)
     assert clahe_img.shape == dummy_image_grayscale.shape
-    assert clahe_img.dtype == np.uint8  # CLAHE output is usually uint8
+    assert clahe_img.dtype == np.uint8
 
 
 def test_normalize_image(dummy_image_grayscale):

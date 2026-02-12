@@ -1,20 +1,19 @@
-import os
 import csv
+import os
 import time
-
-import cv2
-from keras import backend as K
-import numpy as np
-import pydicom
-from PIL import ImageTk, Image
-import tensorflow as tf
-import tkcap
 from tkinter import Tk, StringVar, Text, END
 from tkinter import ttk, font, filedialog
 from tkinter.messagebox import askokcancel, showinfo, WARNING
 
+import cv2
+import numpy as np
+import tensorflow as tf
+import tkcap
+from PIL import ImageTk, Image
+from keras import backend as K
 from tkcap.exceptions import ImageNameExistsError
-from src import read_img
+
+from src import read_img, preprocess_img
 
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.experimental.output_all_intermediates(True)
@@ -26,7 +25,7 @@ def model_fun():
 
 
 def grad_cam(array):
-    img = preprocess(array)
+    img = preprocess_img.preprocess_image(array)
     model = model_fun()
     preds = model.predict(img)
     argmax = np.argmax(preds[0])
@@ -56,7 +55,7 @@ def grad_cam(array):
 
 def predict(array):
     # 1. call function to pre-process image: it returns image in batch format
-    batch_array_img = preprocess(array)
+    batch_array_img = preprocess_img.preprocess_image(array)
     # 2. call function to load model and predict: it returns predicted class and probability
     model = model_fun()
     prediction = np.argmax(model.predict(batch_array_img))
@@ -71,16 +70,6 @@ def predict(array):
     #   3. call function to generate Grad-CAM: it returns an image with a superimposed heatmap
     heatmap = grad_cam(array)
     return (label, proba, heatmap)
-
-def preprocess(array):
-    array = cv2.resize(array, (512, 512))
-    array = cv2.cvtColor(array, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
-    array = clahe.apply(array)
-    array = array / 255
-    array = np.expand_dims(array, axis=-1)
-    array = np.expand_dims(array, axis=0)
-    return array
 
 
 class App:

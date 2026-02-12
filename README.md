@@ -1,15 +1,41 @@
-# Proyecto de neumonía del curso Desarrollo de Proyectos de Inteligencia Artificial, UAO
+# Proyecto de Neumonía - Curso Desarrollo de Proyectos de Inteligencia Artificial
 
-Deep Learning aplicado en el procesamiento de imágenes radiográficas de tórax en formato DICOM con el fin de clasificarlas en 3 categorías diferentes:
+Este proyecto consiste en una aplicación de escritorio diseñada para apoyar el diagnóstico de neumonía mediante el procesamiento de imágenes de rayos X (DICOM y JPG). El sistema ha sido refactorizado para garantizar una arquitectura modular y escalable.
 
-1. Neumonía Bacteriana
+## Requisitos del Sistema
+* **Versión de Python:** 3.10 o superior.
+* **Dependencias principales:** OpenCV, Pydicom, Pillow, Pytest, TensorFlow.
 
-2. Neumonía Viral
-
-3. Sin Neumonía
-
-Aplicación de una técnica de explicación llamada Grad-CAM para resaltar con un mapa de calor las regiones relevantes de la imagen de entrada.
-
+## Estructura del Proyecto
+```
+UAO-Neumonia/
+│
+├── src/                        
+│   ├── read_img.py             
+│   ├── preprocess_img.py       
+│   ├── load_model.py           
+│   ├── grad_cam.py             
+│   └── integrator.py           
+│
+├── tests/                      
+│   ├── test_read_img.py        
+│   ├── test_preprocess_img.py   
+│   ├── test_load_model.py      
+│   └── test_grad_cam.py        
+│
+├── docs/                       
+│   ├── flujo_app.png 
+│   ├── arquitectura_modulos.png
+│
+├── models/                     
+│   └── WilhemNet86.h5          
+│
+├── detector_neumonia.py        
+├── requirements.txt            
+├── Dockerfile                  
+├── LICENSE                     
+└── README.md                   
+```
 
 ## Uso de la herramienta:
 
@@ -105,7 +131,12 @@ Es una técnica utilizada para resaltar las regiones de una imagen que son impor
 
 Grad-CAM realiza el cálculo del gradiente de la salida correspondiente a la clase a visualizar con respecto a las neuronas de una cierta capa de la CNN. Esto permite tener información de la importancia de cada neurona en el proceso de decisión de esa clase en particular. Una vez obtenidos estos pesos, se realiza una combinación lineal entre el mapa de activaciones de la capa y los pesos, de esta manera, se captura la importancia del mapa de activaciones para la clase en particular y se ve reflejado en la imagen de entrada como un mapa de calor con intensidades más altas en aquellas regiones relevantes para la red con las que clasificó la imagen en cierta categoría.
 
-## Proyecto original realizado por:
+## licencia:
+Este proyecto se distribuye bajo la licencia MIT. Consulte el archivo LICENSE para más información.
 
-Isabella Torres Revelo - https://github.com/isa-tr
-Nicolas Diaz Salazar - https://github.com/nicolasdiazsalazar
+## Integrantes:
+
+ALEXANDER CALAMBAS RAMIREZ
+OSCAR PORTELA OSPINA
+SEBASTIAN TORRES CABRERA
+ANGELO PARRA CORTEZ

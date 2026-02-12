@@ -15,8 +15,9 @@ from tkcap.exceptions import ImageNameExistsError
 
 from src import read_img, preprocess_img, load_model, grad_cam
 
-tf.compat.v1.disable_eager_execution()
-tf.compat.v1.experimental.output_all_intermediates(True)
+# Commented out for compatibility with modern Grad-CAM implementation
+# tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.experimental.output_all_intermediates(True)
 
 
 def predict(array):
@@ -66,10 +67,13 @@ class App:
         self.result = StringVar()
 
         #   TWO INPUT BOXES
-        self.text1 = ttk.Entry(self.root, textvariable=self.ID, width=10)
+        self.text1 = ttk.Entry(self.root, textvariable=self.ID, width=10, state="disabled")
 
         #   GET ID
         self.ID_content = self.text1.get()
+
+        #   TRACE para validar cuando se ingresa cédula
+        self.ID.trace("w", self.validate_patient_id)
 
         #   TWO IMAGE INPUT BOXES
         self.text_img1 = Text(self.root, width=31, height=15)
@@ -84,10 +88,10 @@ class App:
         self.button2 = ttk.Button(
             self.root, text="Cargar Imagen", command=self.load_img_file
         )
-        self.button3 = ttk.Button(self.root, text="Borrar", command=self.delete)
-        self.button4 = ttk.Button(self.root, text="PDF", command=self.create_pdf)
+        self.button3 = ttk.Button(self.root, text="Borrar", state="disabled", command=self.delete)
+        self.button4 = ttk.Button(self.root, text="PDF", state="disabled", command=self.create_pdf)
         self.button6 = ttk.Button(
-            self.root, text="Guardar", command=self.save_results_csv
+            self.root, text="Guardar", state="disabled", command=self.save_results_csv
         )
 
         #   WIDGETS POSITIONS
@@ -108,8 +112,8 @@ class App:
         self.text_img1.place(x=65, y=90)
         self.text_img2.place(x=500, y=90)
 
-        #   FOCUS ON PATIENT ID
-        self.text1.focus_set()
+        #   FOCUS ON PATIENT ID - Comentado porque el campo inicia deshabilitado
+        # self.text1.focus_set()
 
         #  se reconoce como un elemento de la clase
         self.array = None
@@ -135,14 +139,31 @@ class App:
         if filepath:
             # Llamada al módulo refactorizado
             self.array, img2show = read_img.load_image_file(filepath)
-            
+
             # Procesamiento para la interfaz
             self.img1 = img2show.resize((250, 250), Image.Resampling.LANCZOS)
             self.img1 = ImageTk.PhotoImage(self.img1)
             self.text_img1.image_create(END, image=self.img1)
-            self.button1["state"] = "enabled"
+
+            # Habilitar campo de cédula y dar foco
+            self.text1["state"] = "normal"
+            self.text1.focus_set()
+
+    def validate_patient_id(self, *args):
+        # Habilitar botón "Predecir" solo si hay cédula ingresada y hay imagen cargada
+        patient_id = self.ID.get().strip()
+        if patient_id and self.array is not None:
+            self.button1["state"] = "normal"
+        else:
+            self.button1["state"] = "disabled"
 
     def run_model(self):
+        # Limpiar resultados anteriores
+        self.text_img2.delete("1.0", END)
+        self.text2.delete("1.0", END)
+        self.text3.delete("1.0", END)
+
+        # Generar nuevos resultados
         self.label, self.proba, self.heatmap = predict(self.array)
         self.img2 = Image.fromarray(self.heatmap)
         self.img2 = self.img2.resize((250, 250), Image.Resampling.LANCZOS)
@@ -152,16 +173,24 @@ class App:
         self.text2.insert(END, self.label)
         self.text3.insert(END, "{:.2f}".format(self.proba) + "%")
 
+        # Habilitar botones de acciones post-predicción
+        self.button6["state"] = "normal"  # Guardar
+        self.button4["state"] = "normal"  # PDF
+        self.button3["state"] = "normal"  # Borrar
+
     def save_results_csv(self):
-        with open("historial.csv", "a") as csvfile:
+        csv_path = os.path.abspath("historial.csv")
+        with open(csv_path, "a") as csvfile:
             w = csv.writer(csvfile, delimiter="-")
             w.writerow(
                 [self.text1.get(), self.label, "{:.2f}".format(self.proba) + "%"]
             )
-            showinfo(title="Guardar", message="Los datos se guardaron con éxito.")
+            showinfo(
+                title="Guardar",
+                message=f"Los datos se guardaron con éxito.\n\nRuta: {csv_path}"
+            )
 
     def create_pdf(self):
-        cap = tkcap.CAP(self.root)
         patient_id = self.text1.get()
         if not patient_id:
             patient_id = "Desconocido"
@@ -170,13 +199,27 @@ class App:
         pdf_filename = f"Reporte_{patient_id}_{timestamp}.pdf"
 
         try:
+            cap = tkcap.CAP(self.root)
             cap.capture(img_filename)
+
+            # Verificar que la captura se realizó
+            if not os.path.exists(img_filename):
+                raise FileNotFoundError("La captura de pantalla falló. Esto puede ocurrir en macOS debido a permisos.")
+
             img = Image.open(img_filename)
             img = img.convert("RGB")
             img.save(pdf_filename)
-            showinfo(title="PDF", message=f"El PDF '{pdf_filename}' fue generado con éxito.")
-        except ImageNameExistsError:
-            showinfo(title="Error", message=f"Ocurrió un error al generar PDF")
+
+            pdf_path = os.path.abspath(pdf_filename)
+            showinfo(
+                title="PDF",
+                message=f"El PDF fue generado con éxito.\n\nRuta: {pdf_path}"
+            )
+        except Exception as e:
+            showinfo(
+                title="Error",
+                message=f"Ocurrió un error al generar PDF:\n{str(e)}\n\nNota: En macOS, puede necesitar dar permisos de captura de pantalla a Python/Terminal en Configuración > Privacidad y Seguridad."
+            )
         finally:
             if os.path.exists(img_filename):
                 os.remove(img_filename)
@@ -186,11 +229,26 @@ class App:
             title="Confirmación", message="Se borrarán todos los datos.", icon=WARNING
         )
         if answer:
+            # Limpiar campos de texto
             self.text1.delete(0, "end")
             self.text2.delete(1.0, "end")
             self.text3.delete(1.0, "end")
-            self.text_img1.delete(self.img1, "end")
-            self.text_img2.delete(self.img2, "end")
+            self.text_img1.delete("1.0", "end")
+            self.text_img2.delete("1.0", "end")
+
+            # Resetear estado de la aplicación
+            self.array = None
+            self.label = None
+            self.proba = None
+            self.heatmap = None
+
+            # Resetear flujo: deshabilitar todo excepto "Cargar Imagen"
+            self.text1["state"] = "disabled"
+            self.button1["state"] = "disabled"  # Predecir
+            self.button3["state"] = "disabled"  # Borrar
+            self.button4["state"] = "disabled"  # PDF
+            self.button6["state"] = "disabled"  # Guardar
+
             showinfo(title="Borrar", message="Los datos se borraron con éxito")
 
 

@@ -55,14 +55,64 @@ Requerimientos necesarios para el funcionamiento:
   uv pip install tensorflow==2.15.0
   ```
 
-Uso de la Interfaz Gráfica:
+### Uso de la Interfaz Gráfica:
 
-- Ingrese la cédula del paciente en la caja de texto
-- Presione el botón 'Cargar Imagen', seleccione la imagen del explorador de archivos del computador (Imagenes de prueba en https://drive.google.com/drive/folders/1WOuL0wdVC6aojy8IfssHcqZ4Up14dy0g?usp=drive_link)
-- Presione el botón 'Predecir' y espere unos segundos hasta que observe los resultados
-- Presione el botón 'Guardar' para almacenar la información del paciente en un archivo excel con extensión .csv
-- Presione el botón 'PDF' para descargar un archivo PDF con la información desplegada en la interfaz
-- Presión el botón 'Borrar' si desea cargar una nueva imagen
+La interfaz implementa un **flujo de trabajo secuencial** que guía al usuario paso a paso, habilitando botones progresivamente para prevenir errores:
+
+#### Flujo de Trabajo:
+
+**1. Estado Inicial (al abrir la aplicación):**
+   - Solo el botón **"Cargar Imagen"** está habilitado
+   - Todos los demás controles están deshabilitados
+
+**2. Cargar Imagen:**
+   - Presione el botón **"Cargar Imagen"**
+   - Seleccione una imagen de rayos X del explorador de archivos (formatos: `.dcm`, `.jpg`, `.jpeg`, `.png`)
+   - Imágenes de prueba disponibles en: https://drive.google.com/drive/folders/1WOuL0wdVC6aojy8IfssHcqZ4Up14dy0g?usp=drive_link
+   - La imagen se visualizará en el panel izquierdo
+   - Se habilitará automáticamente el campo **"Cédula Paciente"**
+
+**3. Ingresar Cédula del Paciente:**
+   - El campo de cédula ahora está habilitado (con foco automático)
+   - Ingrese el número de identificación del paciente
+   - El botón **"Predecir"** se habilitará automáticamente al ingresar texto
+
+**4. Ejecutar Predicción:**
+   - Presione el botón **"Predecir"**
+   - Espere unos segundos mientras el sistema:
+     - Preprocesa la imagen (resize, CLAHE, normalización)
+     - Ejecuta el modelo CNN WilhemNet86
+     - Genera el mapa de calor Grad-CAM
+   - Se mostrarán los resultados:
+     - **Panel derecho:** Imagen con mapa de calor superpuesto
+     - **Resultado:** Diagnóstico (bacteriana / normal / viral)
+     - **Probabilidad:** Porcentaje de confianza del modelo
+   - Se habilitarán los botones **"Guardar"**, **"PDF"** y **"Borrar"**
+
+**5. Guardar Resultados:**
+   - Presione el botón **"Guardar"**
+   - Los datos se almacenarán en `historial.csv` (formato: cédula-diagnóstico-probabilidad)
+   - Se mostrará un mensaje con la ruta del archivo guardado
+
+**6. Generar Reporte PDF:**
+   - Presione el botón **"PDF"**
+   - Se generará un archivo PDF con la captura de pantalla de los resultados
+   - Se mostrará un mensaje con la ruta del archivo generado
+   - **Nota para macOS:** Si aparece un error, verifique los permisos de captura de pantalla en:
+     - *Configuración del Sistema > Privacidad y Seguridad > Grabación de Pantalla*
+     - Active los permisos para Terminal o Python
+
+**7. Limpiar / Nueva Consulta:**
+   - Presione el botón **"Borrar"**
+   - Se limpiará toda la información de la interfaz
+   - El flujo se reiniciará al estado inicial (solo "Cargar Imagen" habilitado)
+   - Listo para procesar un nuevo paciente
+
+#### Notas Importantes:
+- Los botones se habilitan **progresivamente** según el flujo
+- No puede predecir sin antes cargar una imagen e ingresar cédula
+- No puede guardar o generar PDF sin antes ejecutar una predicción
+- El botón "Borrar" resetea completamente la aplicación al estado inicial
 
 ---
 

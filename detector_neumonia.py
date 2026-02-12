@@ -73,7 +73,7 @@ class App:
         self.ID_content = self.text1.get()
 
         #   TRACE para validar cuando se ingresa cédula
-        self.ID.trace("w", self.validate_patient_id)
+        self.ID.trace_add("write", self.validate_patient_id)
 
         #   TWO IMAGE INPUT BOXES
         self.text_img1 = Text(self.root, width=31, height=15)

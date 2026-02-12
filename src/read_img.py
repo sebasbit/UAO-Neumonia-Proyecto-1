@@ -5,6 +5,7 @@ import pydicom
 import cv2
 from PIL import Image
 
+
 def load_image_file(filepath: str):
     """
     Función unificada para cargar archivos médicos.
@@ -23,18 +24,34 @@ def load_image_file(filepath: str):
     else:
         raise ValueError(f"Formato no soportado: {extension}")
 
+
 def _handle_dicom(path):
     ds = pydicom.dcmread(path)
     img_array = ds.pixel_array
+
     # Normalización Min-Max para visualización 8-bit
-    img_norm = ((img_array - np.min(img_array)) / (np.max(img_array) - np.min(img_array)) * 255).astype(np.uint8)
+    min_val = np.min(img_array.astype(float))
+    max_val = np.max(img_array.astype(float))
+    if max_val - min_val == 0:
+        img_norm = np.zeros_like(img_array)
+    else:
+        img_norm = (((img_array.astype(float) - min_val) / (max_val - min_val)) * 255).astype(np.uint8)
     img_rgb = cv2.cvtColor(img_norm, cv2.COLOR_GRAY2RGB)
-    return img_norm, Image.fromarray(img_rgb)
+    return img_rgb, Image.fromarray(img_array)
+
 
 def _handle_standard(path):
     img_bgr = cv2.imread(path)
     if img_bgr is None:
         raise ValueError("Error al decodificar la imagen.")
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    return img_gray, Image.fromarray(img_rgb)
+    img_array = np.asarray(img_rgb)
+
+    min_val = np.min(img_array.astype(float))
+    max_val = np.max(img_array.astype(float))
+    if max_val - min_val == 0:
+        img_norm = np.zeros_like(img_array)
+    else:
+        img_norm = (((img_array.astype(float) - min_val) / (max_val - min_val)) * 255).astype(np.uint8)
+
+    return img_norm, Image.fromarray(img_array)

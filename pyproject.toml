@@ -14,9 +14,14 @@ dependencies = [
     "pydicom>=3.0.1",
     "pytest>=9.0.2",
     "python-xlib>=0.33",
-    "tensorflow-macos",
+    "tensorflow-macos; sys_platform == 'darwin'",
+    "tensorflow==2.15.0; sys_platform != 'darwin'",
+    "tensorflow-intel==2.15.0; sys_platform == 'win32'",
     "tkcap>=0.0.4",
     "numpy<2"
 ]
 
-
+[tool.uv]
+override-dependencies = [
+    "tensorflow-io-gcs-filesystem==0.31.0; sys_platform == 'win32'"
+]

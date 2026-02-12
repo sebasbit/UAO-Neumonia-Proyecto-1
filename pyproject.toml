@@ -18,7 +18,8 @@ dependencies = [
     "tensorflow==2.15.0; sys_platform != 'darwin'",
     "tensorflow-intel==2.15.0; sys_platform == 'win32'",
     "tkcap>=0.0.4",
-    "numpy<2"
+    "numpy<2",
+    "tensorflow-macos==2.15.0",
 ]
 
 [tool.uv]

@@ -9,7 +9,8 @@ wheels/
 # Virtual environments
 .venv/
 
-# UV
+# UV (macOS-specific dependencies)
+pyproject.toml
 uv.lock
 
 # Project files
@@ -30,3 +31,9 @@ uv.lock
 # Optional caches
 .matplotlib/
 
+
+# Claude Code memory
+.claude/
+
+# Pytest cache
+.pytest_cache/

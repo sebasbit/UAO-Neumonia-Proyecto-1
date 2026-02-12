@@ -76,43 +76,6 @@ Para ejecutar los tests del proyecto, abra la terminal en el directorio del proy
 
 ---
 
-## Arquitectura de archivos propuesta.
-
-## detector_neumonia.py
-
-Contiene el diseño de la interfaz gráfica utilizando Tkinter.
-
-Los botones llaman métodos contenidos en otros scripts.
-
-## integrator.py
-
-Es un módulo que integra los demás scripts y retorna solamente lo necesario para ser visualizado en la interfaz gráfica.
-Retorna la clase, la probabilidad y una imagen el mapa de calor generado por Grad-CAM.
-
-## read_img.py
-
-Script que lee la imagen en formato DICOM para visualizarla en la interfaz gráfica. Además, la convierte a arreglo para su preprocesamiento.
-
-## preprocess_img.py
-
-Script que recibe el arreglo proveniento de read_img.py, realiza las siguientes modificaciones:
-
-- resize a 512x512
-- conversión a escala de grises
-- ecualización del histograma con CLAHE
-- normalización de la imagen entre 0 y 1
-- conversión del arreglo de imagen a formato de batch (tensor)
-
-## load_model.py
-
-Script que lee el archivo binario del modelo de red neuronal convolucional previamente entrenado llamado 'WilhemNet86.h5'.
-
-## grad_cam.py
-
-Script que recibe la imagen y la procesa, carga el modelo, obtiene la predicción y la capa convolucional de interés para obtener las características relevantes de la imagen.
-
----
-
 ## Acerca del Modelo
 
 La red neuronal convolucional implementada (CNN) es basada en el modelo implementado por F. Pasa, V.Golkov, F. Pfeifer, D. Cremers & D. Pfeifer
@@ -136,7 +99,280 @@ Este proyecto se distribuye bajo la licencia MIT. Consulte el archivo LICENSE pa
 
 ## Integrantes:
 
-ALEXANDER CALAMBAS RAMIREZ
-OSCAR PORTELA OSPINA
-SEBASTIAN TORRES CABRERA
-ANGELO PARRA CORTEZ
+- **ALEXANDER CALAMBAS RAMIREZ** 
+- **OSCAR PORTELA OSPINA** 
+- **SEBASTIAN TORRES CABRERA** 
+- **ANGELO PARRA CORTEZ** 
+
+---
+
+## Documentación Detallada de Scripts
+
+### 1. detector_neumonia.py (Aplicación Principal)
+
+**Descripción:** Interfaz gráfica de usuario (GUI) desarrollada con Tkinter para el diagnóstico de neumonía.
+
+**Funciones principales:**
+
+- `predict(array)`: Pipeline completo de predicción
+  - Preprocesa la imagen usando preprocess_img.preprocess_image()
+  - Carga el modelo usando load_model.load_model()
+  - Realiza la predicción (clasificación en 3 clases: bacteriana, normal, viral)
+  - Calcula la probabilidad de la predicción
+  - Genera el mapa de calor Grad-CAM usando grad_cam.grad_cam()
+  - Retorna: (etiqueta, probabilidad, heatmap)
+
+**Clase App:**
+
+Métodos:
+- `__init__()`: Inicializa la interfaz gráfica con dimensiones 815x560 píxeles
+- `load_img_file()`: Abre explorador de archivos, carga imagen DICOM/JPG/PNG usando read_img.load_image_file()
+- `run_model()`: Ejecuta predict() y muestra resultados en la GUI
+- `save_results_csv()`: Guarda cédula, diagnóstico y probabilidad en historial.csv
+- `create_pdf()`: Captura pantalla y genera reporte PDF
+- `delete()`: Limpia la interfaz para nuevo análisis
+
+**Componentes GUI:**
+- Campos de entrada: Cédula del paciente
+- Visualización: Imagen original + Grad-CAM superpuesto
+- Botones: Cargar Imagen, Predecir, Guardar, PDF, Borrar
+
+---
+
+### 2. src/read_img.py (Lectura de Imágenes Médicas)
+
+**Descripción:** Módulo especializado en lectura unificada de archivos médicos DICOM y estándar (JPG/PNG).
+
+**Funciones:**
+
+- `load_image_file(filepath)`: Función principal unificada
+  - Detecta automáticamente el tipo de archivo por extensión
+  - Llama a _handle_dicom() o _handle_standard() según corresponda
+  - Retorna: (array_numpy, imagen_pil) para procesamiento y visualización
+
+- `_handle_dicom(path)`: Procesamiento de archivos DICOM (.dcm)
+  - Lee usando pydicom
+  - Normaliza valores Min-Max a escala 0-255 (8 bits)
+  - Convierte a RGB para visualización (repite canal en las 3 dimensiones)
+  - Retorna: (array_normalizado, imagen_pil)
+
+- `_handle_standard(path)`: Procesamiento de imágenes estándar (.jpg, .jpeg, .png)
+  - Lee con OpenCV (cv2.imread)
+  - Normalización Min-Max a escala 0-255
+  - Conversión de BGR a RGB (OpenCV lee en BGR)
+  - Retorna: (array_rgb, imagen_pil)
+
+**Manejo de errores:**
+- FileNotFoundError: Archivo no encontrado
+- ValueError: Formato de archivo no soportado
+
+**Formatos soportados:** .dcm, .jpg, .jpeg, .png
+
+---
+
+### 3. src/preprocess_img.py (Preprocesamiento de Imágenes)
+
+**Descripción:** Pipeline modular de preprocesamiento para preparar imágenes para el modelo CNN.
+
+**Funciones especializadas:**
+
+- `resize_image(img, target_size=(512, 512))`: Redimensiona imagen
+  - Usa cv2.resize con interpolación INTER_AREA
+  - Retorna: array redimensionado
+
+- `convert_to_grayscale(img)`: Convierte a escala de grises
+  - Detecta si la imagen ya está en grises
+  - Convierte RGB a escala de grises usando cv2.cvtColor(COLOR_RGB2GRAY)
+  - Retorna: array en escala de grises
+
+- `apply_clahe(img, clip_limit=2.0, tile_grid_size=(4, 4))`: Ecualización de histograma adaptativo
+  - CLAHE (Contrast Limited Adaptive Histogram Equalization)
+  - Mejora el contraste local de la imagen
+  - Parámetros: clip_limit controla el nivel de contraste, tile_grid_size define el tamaño de las regiones
+  - Retorna: imagen con contraste mejorado
+
+- `normalize_image(img)`: Normaliza valores
+  - Escala valores de [0, 255] a [0.0, 1.0]
+  - Convierte a tipo float64
+  - Retorna: array normalizado
+
+- `expand_dims_for_model(img)`: Expande dimensiones para formato de batch
+  - Imágenes en escala de grises: (H, W) → (H, W, 1) → (1, H, W, 1)
+  - Imágenes a color: (H, W, C) → (1, H, W, C)
+  - Primera dimensión = batch size (siempre 1 para inferencia)
+  - Retorna: tensor en formato batch
+
+- `preprocess_image(img)`: Pipeline completo de preprocesamiento
+  - Ejecuta secuencialmente: resize → grayscale → CLAHE → normalize → expand_dims
+  - Retorna: tensor (1, 512, 512, 1) listo para el modelo
+
+**Flujo completo:** Imagen original → 512x512 → Escala de grises → CLAHE → Normalización [0,1] → Tensor batch
+
+---
+
+### 4. src/load_model.py (Carga del Modelo CNN)
+
+**Descripción:** Módulo para carga segura del modelo pre-entrenado WilhemNet86 con validaciones de integridad.
+
+**Funciones:**
+
+- `load_model(model_filename='conv_MLP_84.h5')`: Carga del modelo con validaciones completas
+  - **Validación 1:** Verifica que el archivo existe en la ruta del proyecto
+  - **Validación 2:** Verifica extensión válida (.h5, .keras, .pb)
+  - **Validación 3:** Verifica que el archivo no está vacío (tamaño > 0 bytes)
+  - **Validación 4:** Intenta cargar el modelo usando tf.keras.models.load_model(compile=False)
+  - **Validación 5:** Verifica que el modelo tiene el método 'predict' requerido
+  - Manejo robusto de errores con mensajes descriptivos
+  - Retorna: modelo de Keras listo para inferencia
+
+- `model_fun()`: Función de compatibilidad con código legacy
+  - Wrapper para load_model() con firma simplificada
+  - Mantiene compatibilidad con detector_neumonia.py original
+  - Retorna: modelo de Keras
+
+**Excepciones manejadas:**
+- FileNotFoundError: Modelo no encontrado
+- ValueError: Archivo corrupto o extensión inválida
+- OSError: Problemas de permisos o lectura
+
+**Ubicación del modelo:** Raíz del proyecto / conv_MLP_84.h5 (112 MB)
+
+---
+
+### 5. src/grad_cam.py (Visualización Explicativa)
+
+**Descripción:** Implementación de Grad-CAM (Gradient-weighted Class Activation Mapping) para explicabilidad visual de predicciones usando TensorFlow 2.x API moderna.
+
+**Funciones:**
+
+- `generate_heatmap(model, preprocessed_img, last_conv_layer_name="conv10_thisone")`: Genera mapa de calor
+  - **Paso 1:** Verifica que la capa convolucional existe en el modelo
+  - **Paso 2:** Crea modelo auxiliar que retorna activaciones + predicciones
+  - **Paso 3:** Convierte imagen a tensor TensorFlow si es necesario
+  - **Paso 4:** Usa tf.GradientTape para calcular gradientes de la clase predicha respecto a activaciones
+  - **Paso 5:** Promedia gradientes espacialmente (Global Average Pooling)
+  - **Paso 6:** Pondera cada canal de activaciones por su gradiente correspondiente
+  - **Paso 7:** Promedia canales ponderados para crear heatmap
+  - **Paso 8:** Aplica ReLU (mantiene solo influencias positivas)
+  - **Paso 9:** Normaliza heatmap a rango [0, 1]
+  - Retorna: heatmap normalizado (H, W)
+
+  **Tecnología:** tf.GradientTape (compatible con eager execution y Keras 3.x)
+
+- `superimpose_heatmap(heatmap, original_img, target_size=(512, 512), alpha=0.8)`: Superpone heatmap sobre imagen
+  - Redimensiona heatmap al tamaño objetivo
+  - Convierte heatmap a escala 0-255 (uint8)
+  - Aplica colormap JET (azul=baja activación, rojo=alta activación)
+  - Redimensiona imagen original
+  - Aplica transparencia al heatmap (alpha=0.8 → 80% visible)
+  - Superpone heatmap sobre imagen usando cv2.add()
+  - Convierte de BGR a RGB
+  - Retorna: imagen RGB con heatmap superpuesto
+
+- `grad_cam(array, model=None)`: Pipeline completo de Grad-CAM
+  - Preprocesa imagen usando preprocess_img.preprocess_image()
+  - Carga modelo si no se provee
+  - Genera heatmap usando generate_heatmap()
+  - Superpone heatmap usando superimpose_heatmap()
+  - Retorna: imagen RGB con visualización explicativa
+
+**Interpretación:** Las áreas brillantes (rojas/amarillas) indican regiones de mayor importancia para la clasificación del modelo.
+
+---
+
+### 6. tests/test_read_img.py (Tests de Lectura)
+
+**Descripción:** Suite de pruebas unitarias para validar la lectura de imágenes médicas.
+
+**Tests implementados (3):**
+
+- `test_load_standard_image()`: Valida carga de JPG/PNG
+  - Verifica retorno de NumPy array y PIL Image
+  - Verifica dimensiones correctas
+
+- `test_load_dicom_simulated()`: Simula lectura de DICOM con mocks
+  - Usa mock de pydicom
+  - Verifica normalización a 8-bit
+  - Valida conversión a RGB
+
+- `test_invalid_format()`: Manejo de formatos inválidos
+  - Verifica excepción ValueError para archivos no soportados
+
+**Cobertura:** Lectura DICOM, lectura estándar, manejo de errores
+
+---
+
+### 7. tests/test_preprocess_img.py (Tests de Preprocesamiento)
+
+**Descripción:** Suite de pruebas para validar el pipeline de preprocesamiento.
+
+**Tests implementados (6):**
+
+- `test_resize_image()`: Verifica cambio de dimensiones a 512x512
+- `test_convert_to_grayscale_color_image()`: Valida conversión RGB a escala de grises
+- `test_apply_clahe()`: Verifica aplicación de CLAHE (mantiene forma y tipo)
+- `test_normalize_image()`: Valida normalización a rango [0, 1]
+- `test_expand_dims_for_model_grayscale()`: Verifica expansión de dimensiones (1, 512, 512, 1)
+- `test_preprocess_image_pipeline()`: Valida pipeline completo
+  - Verifica forma final (1, 512, 512, 1)
+  - Verifica tipo float64
+  - Verifica rango [0, 1]
+
+**Cobertura:** Todas las funciones de preprocesamiento + pipeline integrado
+
+---
+
+### 8. tests/test_load_model.py (Tests de Carga de Modelo)
+
+**Descripción:** Suite de pruebas para validar la carga segura del modelo CNN.
+
+**Tests implementados (8):**
+
+- `test_load_model_success()`: Carga exitosa del modelo real
+  - Requiere archivo conv_MLP_84.h5
+  - Verifica modelo no es None
+  - Verifica existencia de método 'predict'
+
+- `test_load_model_file_not_found()`: Error cuando modelo no existe
+- `test_load_model_invalid_extension()`: Validación de extensiones (.h5, .keras, .pb)
+- `test_load_model_empty_file()`: Detección de archivos vacíos
+- `test_model_fun_compatibility()`: Compatibilidad con función legacy
+- `test_load_model_corrupted_file()`: Manejo de archivos corruptos
+- `test_load_model_returns_none()`: Validación cuando load retorna None
+- `test_load_model_no_predict_method()`: Validación de método 'predict'
+
+**Cobertura:** Carga exitosa, validaciones de integridad, manejo de errores
+
+---
+
+### 9. tests/test_grad_cam.py (Tests de Grad-CAM)
+
+**Descripción:** Suite de pruebas para validar la generación de mapas de calor explicativos.
+
+**Tests implementados (8):**
+
+- `test_superimpose_heatmap_output_structure()`: Valida estructura de salida
+  - Tipo uint8
+  - Dimensiones (512, 512, 3)
+  - Rango [0, 255]
+
+- `test_superimpose_heatmap_with_custom_size()`: Tamaños personalizados
+- `test_superimpose_heatmap_alpha_parameter()`: Efecto del parámetro de transparencia
+- `test_generate_heatmap_with_real_model()`: Generación con modelo real
+  - Requiere conv_MLP_84.h5
+  - Valida heatmap normalizado [0, 1]
+  - Verifica dimensiones 2D
+
+- `test_generate_heatmap_invalid_layer()`: Error cuando capa no existe
+- `test_grad_cam_full_pipeline()`: Pipeline completo con mocks
+- `test_grad_cam_with_provided_model()`: Uso de modelo pre-cargado
+- `test_heatmap_normalization()`: Validación de normalización
+
+**Cobertura:** Generación de heatmap, superposición, pipeline completo, manejo de errores
+
+---
+
+**Comando para ejecutar tests:**
+```bash
+uv run pytest tests/ -v
+```

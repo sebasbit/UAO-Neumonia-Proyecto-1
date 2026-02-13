@@ -5,38 +5,10 @@ from tkinter import Tk, StringVar, Text, END
 from tkinter import ttk, font, filedialog
 from tkinter.messagebox import askokcancel, showinfo, WARNING
 
-import cv2
-import numpy as np
-import tensorflow as tf
 import tkcap
 from PIL import ImageTk, Image
-from keras import backend as K
-from tkcap.exceptions import ImageNameExistsError
 
-from src import read_img, preprocess_img, load_model, grad_cam
-
-# Commented out for compatibility with modern Grad-CAM implementation
-# tf.compat.v1.disable_eager_execution()
-# tf.compat.v1.experimental.output_all_intermediates(True)
-
-
-def predict(array):
-    # 1. call function to pre-process image: it returns image in batch format
-    batch_array_img = preprocess_img.preprocess_image(array)
-    # 2. call function to load model and predict: it returns predicted class and probability
-    model = load_model.load_model()
-    prediction = np.argmax(model.predict(batch_array_img))
-    proba = np.max(model.predict(batch_array_img)) * 100
-    label = ""
-    if prediction == 0:
-        label = "bacteriana"
-    if prediction == 1:
-        label = "normal"
-    if prediction == 2:
-        label = "viral"
-    #   3. call function to generate Grad-CAM: it returns an image with a superimposed heatmap
-    heatmap = grad_cam.grad_cam(array, model)
-    return (label, proba, heatmap)
+from src import integrator
 
 
 class App:
@@ -138,7 +110,7 @@ class App:
         )
         if filepath:
             # Llamada al módulo refactorizado
-            self.array, img2show = read_img.load_image_file(filepath)
+            self.array, img2show = integrator.load_and_prepare_image(filepath)
 
             # Procesamiento para la interfaz
             self.img1 = img2show.resize((250, 250), Image.Resampling.LANCZOS)
@@ -164,7 +136,8 @@ class App:
         self.text3.delete("1.0", END)
 
         # Generar nuevos resultados
-        self.label, self.proba, self.heatmap = predict(self.array)
+        self.label, probability, self.heatmap = integrator.predict_pneumonia(self.array)
+        self.proba = probability * 100
         self.img2 = Image.fromarray(self.heatmap)
         self.img2 = self.img2.resize((250, 250), Image.Resampling.LANCZOS)
         self.img2 = ImageTk.PhotoImage(self.img2)

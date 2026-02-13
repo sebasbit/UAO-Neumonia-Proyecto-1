@@ -1,66 +1,30 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-import os
 import csv
+import os
 import time
-
-import cv2
-from keras import backend as K
-import numpy as np
-import pydicom
-from PIL import ImageTk, Image
-import tensorflow as tf
-import tkcap
 from tkinter import Tk, StringVar, Text, END
 from tkinter import ttk, font, filedialog
 from tkinter.messagebox import askokcancel, showinfo, WARNING
 
+import cv2
+import numpy as np
+import tensorflow as tf
+import tkcap
+from PIL import ImageTk, Image
+from keras import backend as K
 from tkcap.exceptions import ImageNameExistsError
 
-tf.compat.v1.disable_eager_execution()
-tf.compat.v1.experimental.output_all_intermediates(True)
+from src import read_img, preprocess_img, load_model, grad_cam
 
-
-def model_fun():
-    model_path = os.path.join(os.path.dirname(__file__), 'conv_MLP_84.h5')
-    return tf.keras.models.load_model(model_path, compile=False)
-
-
-def grad_cam(array):
-    img = preprocess(array)
-    model = model_fun()
-    preds = model.predict(img)
-    argmax = np.argmax(preds[0])
-    output = model.output[:, argmax]
-    last_conv_layer = model.get_layer("conv10_thisone")
-    grads = K.gradients(output, last_conv_layer.output)[0]
-    pooled_grads = K.mean(grads, axis=(0, 1, 2))
-    iterate = K.function([model.input], [pooled_grads, last_conv_layer.output[0]])
-    pooled_grads_value, conv_layer_output_value = iterate(img)
-    for filters in range(64):
-        conv_layer_output_value[:, :, filters] *= pooled_grads_value[filters]
-    # creating the heatmap
-    heatmap = np.mean(conv_layer_output_value, axis=-1)
-    heatmap = np.maximum(heatmap, 0)  # ReLU
-    heatmap /= np.max(heatmap)  # normalize
-    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[2]))
-    heatmap = np.uint8(255 * heatmap)
-    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    img2 = cv2.resize(array, (512, 512))
-    hif = 0.8
-    transparency = heatmap * hif
-    transparency = transparency.astype(np.uint8)
-    superimposed_img = cv2.add(transparency, img2)
-    superimposed_img = superimposed_img.astype(np.uint8)
-    return superimposed_img[:, :, ::-1]
+# Commented out for compatibility with modern Grad-CAM implementation
+# tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.experimental.output_all_intermediates(True)
 
 
 def predict(array):
     # 1. call function to pre-process image: it returns image in batch format
-    batch_array_img = preprocess(array)
+    batch_array_img = preprocess_img.preprocess_image(array)
     # 2. call function to load model and predict: it returns predicted class and probability
-    model = model_fun()
+    model = load_model.load_model()
     prediction = np.argmax(model.predict(batch_array_img))
     proba = np.max(model.predict(batch_array_img)) * 100
     label = ""
@@ -71,40 +35,8 @@ def predict(array):
     if prediction == 2:
         label = "viral"
     #   3. call function to generate Grad-CAM: it returns an image with a superimposed heatmap
-    heatmap = grad_cam(array)
+    heatmap = grad_cam.grad_cam(array, model)
     return (label, proba, heatmap)
-
-
-def read_dicom_file(path):
-    img = pydicom.dcmread(path)
-    img_array = img.pixel_array
-    img2show = Image.fromarray(img_array)
-    img2 = img_array.astype(float)
-    img2 = (np.maximum(img2, 0) / img2.max()) * 255.0
-    img2 = np.uint8(img2)
-    img_RGB = cv2.cvtColor(img2, cv2.COLOR_GRAY2RGB)
-    return img_RGB, img2show
-
-
-def read_jpg_file(path):
-    img = cv2.imread(path)
-    img_array = np.asarray(img)
-    img2show = Image.fromarray(img_array)
-    img2 = img_array.astype(float)
-    img2 = (np.maximum(img2, 0) / img2.max()) * 255.0
-    img2 = np.uint8(img2)
-    return img2, img2show
-
-
-def preprocess(array):
-    array = cv2.resize(array, (512, 512))
-    array = cv2.cvtColor(array, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
-    array = clahe.apply(array)
-    array = array / 255
-    array = np.expand_dims(array, axis=-1)
-    array = np.expand_dims(array, axis=0)
-    return array
 
 
 class App:
@@ -135,10 +67,13 @@ class App:
         self.result = StringVar()
 
         #   TWO INPUT BOXES
-        self.text1 = ttk.Entry(self.root, textvariable=self.ID, width=10)
+        self.text1 = ttk.Entry(self.root, textvariable=self.ID, width=10, state="disabled")
 
         #   GET ID
         self.ID_content = self.text1.get()
+
+        #   TRACE para validar cuando se ingresa cédula
+        self.ID.trace_add("write", self.validate_patient_id)
 
         #   TWO IMAGE INPUT BOXES
         self.text_img1 = Text(self.root, width=31, height=15)
@@ -153,10 +88,10 @@ class App:
         self.button2 = ttk.Button(
             self.root, text="Cargar Imagen", command=self.load_img_file
         )
-        self.button3 = ttk.Button(self.root, text="Borrar", command=self.delete)
-        self.button4 = ttk.Button(self.root, text="PDF", command=self.create_pdf)
+        self.button3 = ttk.Button(self.root, text="Borrar", state="disabled", command=self.delete)
+        self.button4 = ttk.Button(self.root, text="PDF", state="disabled", command=self.create_pdf)
         self.button6 = ttk.Button(
-            self.root, text="Guardar", command=self.save_results_csv
+            self.root, text="Guardar", state="disabled", command=self.save_results_csv
         )
 
         #   WIDGETS POSITIONS
@@ -177,8 +112,8 @@ class App:
         self.text_img1.place(x=65, y=90)
         self.text_img2.place(x=500, y=90)
 
-        #   FOCUS ON PATIENT ID
-        self.text1.focus_set()
+        #   FOCUS ON PATIENT ID - Comentado porque el campo inicia deshabilitado
+        # self.text1.focus_set()
 
         #  se reconoce como un elemento de la clase
         self.array = None
@@ -202,13 +137,33 @@ class App:
             ),
         )
         if filepath:
-            self.array, img2show = read_dicom_file(filepath) if filepath.endswith('.dcm') else read_jpg_file(filepath)
+            # Llamada al módulo refactorizado
+            self.array, img2show = read_img.load_image_file(filepath)
+
+            # Procesamiento para la interfaz
             self.img1 = img2show.resize((250, 250), Image.Resampling.LANCZOS)
             self.img1 = ImageTk.PhotoImage(self.img1)
             self.text_img1.image_create(END, image=self.img1)
-            self.button1["state"] = "enabled"
+
+            # Habilitar campo de cédula y dar foco
+            self.text1["state"] = "normal"
+            self.text1.focus_set()
+
+    def validate_patient_id(self, *args):
+        # Habilitar botón "Predecir" solo si hay cédula ingresada y hay imagen cargada
+        patient_id = self.ID.get().strip()
+        if patient_id and self.array is not None:
+            self.button1["state"] = "normal"
+        else:
+            self.button1["state"] = "disabled"
 
     def run_model(self):
+        # Limpiar resultados anteriores
+        self.text_img2.delete("1.0", END)
+        self.text2.delete("1.0", END)
+        self.text3.delete("1.0", END)
+
+        # Generar nuevos resultados
         self.label, self.proba, self.heatmap = predict(self.array)
         self.img2 = Image.fromarray(self.heatmap)
         self.img2 = self.img2.resize((250, 250), Image.Resampling.LANCZOS)
@@ -218,16 +173,24 @@ class App:
         self.text2.insert(END, self.label)
         self.text3.insert(END, "{:.2f}".format(self.proba) + "%")
 
+        # Habilitar botones de acciones post-predicción
+        self.button6["state"] = "normal"  # Guardar
+        self.button4["state"] = "normal"  # PDF
+        self.button3["state"] = "normal"  # Borrar
+
     def save_results_csv(self):
-        with open("historial.csv", "a") as csvfile:
+        csv_path = os.path.abspath("historial.csv")
+        with open(csv_path, "a") as csvfile:
             w = csv.writer(csvfile, delimiter="-")
             w.writerow(
                 [self.text1.get(), self.label, "{:.2f}".format(self.proba) + "%"]
             )
-            showinfo(title="Guardar", message="Los datos se guardaron con éxito.")
+            showinfo(
+                title="Guardar",
+                message=f"Los datos se guardaron con éxito.\n\nRuta: {csv_path}"
+            )
 
     def create_pdf(self):
-        cap = tkcap.CAP(self.root)
         patient_id = self.text1.get()
         if not patient_id:
             patient_id = "Desconocido"
@@ -236,13 +199,27 @@ class App:
         pdf_filename = f"Reporte_{patient_id}_{timestamp}.pdf"
 
         try:
+            cap = tkcap.CAP(self.root)
             cap.capture(img_filename)
+
+            # Verificar que la captura se realizó
+            if not os.path.exists(img_filename):
+                raise FileNotFoundError("La captura de pantalla falló. Esto puede ocurrir en macOS debido a permisos.")
+
             img = Image.open(img_filename)
             img = img.convert("RGB")
             img.save(pdf_filename)
-            showinfo(title="PDF", message=f"El PDF '{pdf_filename}' fue generado con éxito.")
-        except ImageNameExistsError:
-            showinfo(title="Error", message=f"Ocurrió un error al generar PDF")
+
+            pdf_path = os.path.abspath(pdf_filename)
+            showinfo(
+                title="PDF",
+                message=f"El PDF fue generado con éxito.\n\nRuta: {pdf_path}"
+            )
+        except Exception as e:
+            showinfo(
+                title="Error",
+                message=f"Ocurrió un error al generar PDF:\n{str(e)}\n\nNota: En macOS, puede necesitar dar permisos de captura de pantalla a Python/Terminal en Configuración > Privacidad y Seguridad."
+            )
         finally:
             if os.path.exists(img_filename):
                 os.remove(img_filename)
@@ -252,11 +229,26 @@ class App:
             title="Confirmación", message="Se borrarán todos los datos.", icon=WARNING
         )
         if answer:
+            # Limpiar campos de texto
             self.text1.delete(0, "end")
             self.text2.delete(1.0, "end")
             self.text3.delete(1.0, "end")
-            self.text_img1.delete(self.img1, "end")
-            self.text_img2.delete(self.img2, "end")
+            self.text_img1.delete("1.0", "end")
+            self.text_img2.delete("1.0", "end")
+
+            # Resetear estado de la aplicación
+            self.array = None
+            self.label = None
+            self.proba = None
+            self.heatmap = None
+
+            # Resetear flujo: deshabilitar todo excepto "Cargar Imagen"
+            self.text1["state"] = "disabled"
+            self.button1["state"] = "disabled"  # Predecir
+            self.button3["state"] = "disabled"  # Borrar
+            self.button4["state"] = "disabled"  # PDF
+            self.button6["state"] = "disabled"  # Guardar
+
             showinfo(title="Borrar", message="Los datos se borraron con éxito")
 
 

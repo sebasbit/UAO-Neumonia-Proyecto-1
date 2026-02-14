@@ -30,7 +30,7 @@ UAO-Neumonia/
 ├── models/                     
 │   └── WilhemNet86.h5          
 │
-├── detector_neumonia.py        
+├── web.py        
 ├── requirements.txt            
 ├── Dockerfile                  
 ├── LICENSE                     
@@ -47,7 +47,7 @@ Requerimientos necesarios para el funcionamiento:
 - Abra la terminal y ejecute las siguientes instrucciones:
   ```
   uv sync
-  uv run detector_neumonia.py
+  uv run web.py
   ```
   
   En caso de errores por la librería Tensorflow en Windows, ejecutar:
@@ -158,9 +158,9 @@ Este proyecto se distribuye bajo la licencia MIT. Consulte el archivo LICENSE pa
 
 ## Documentación Detallada de Scripts
 
-### 1. detector_neumonia.py (Aplicación Principal)
+### 1. web.py (Aplicación Principal)
 
-**Descripción:** Interfaz gráfica de usuario (GUI) desarrollada con Tkinter para el diagnóstico de neumonía.
+**Descripción:** Interfaz WEB de usuario para el diagnóstico de neumonía.
 
 **Funciones principales:**
 
@@ -177,12 +177,12 @@ Este proyecto se distribuye bajo la licencia MIT. Consulte el archivo LICENSE pa
 Métodos:
 - `__init__()`: Inicializa la interfaz gráfica con dimensiones 815x560 píxeles
 - `load_img_file()`: Abre explorador de archivos, carga imagen DICOM/JPG/PNG usando read_img.load_image_file()
-- `run_model()`: Ejecuta predict() y muestra resultados en la GUI
+- `run_model()`: Ejecuta predict() y muestra resultados en la UI
 - `save_results_csv()`: Guarda cédula, diagnóstico y probabilidad en historial.csv
 - `create_pdf()`: Captura pantalla y genera reporte PDF
 - `delete()`: Limpia la interfaz para nuevo análisis
 
-**Componentes GUI:**
+**Componentes UI:**
 - Campos de entrada: Cédula del paciente
 - Visualización: Imagen original + Grad-CAM superpuesto
 - Botones: Cargar Imagen, Predecir, Guardar, PDF, Borrar
@@ -425,4 +425,49 @@ Métodos:
 **Comando para ejecutar tests:**
 ```bash
 uv run pytest tests/ -v
+```
+
+---
+
+## Nueva UI Web (sin dependencias extra)
+
+Este repo traía una UI en Tkinter (`detector_neumonia.py`).  
+Ahora también incluye una UI web local: `web.py`.
+
+### ¿Por qué?
+- Evita problemas de Tkinter/X11 cuando se ejecuta en Docker o en máquinas sin GUI.
+- Facilita el uso por terceros desde un navegador.
+
+### Cómo ejecutar
+
+1) Instalar dependencias:
+```bash
+uv sync
+```
+
+2) Ejecutar servidor web:
+```bash
+uv run python web.py
+```
+
+3) Abrir:
+- http://127.0.0.1:8000
+
+### Flujo de uso
+1) **Cargar modelo (.h5)** (botón “Cargar modelo”)
+2) Cargar imagen (.dcm/.jpg/.png)
+3) “Predecir”
+4) (Opcional) Guardar CSV / Descargar PDF
+
+> Nota: si el modelo que subes no tiene la capa `conv10_thisone`, el Grad-CAM no podrá generarse y la UI lo indicará.
+
+---
+
+## Docker (opcional)
+
+Se dejó un `Dockerfile.web` para correr la UI web dentro de un contenedor.
+
+```bash
+docker build -t uao-neumonia-web .
+docker run --rm -p 8000:8000 uao-neumonia-web
 ```

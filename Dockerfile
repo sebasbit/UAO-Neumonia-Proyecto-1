@@ -12,9 +12,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . /app
 
-ENV UV_NO_DEV=1
-RUN uv sync
-ENV PATH="/app/.venv/bin:$PATH"
+# Install dependencies with platform-specific tensorflow for Linux
+RUN uv pip install --system \
+    "img2pdf>=0.6.3" \
+    "matplotlib>=3.10.8" \
+    "opencv-python-headless>=4.11.0.86" \
+    "pandas>=2.3.3" \
+    "pillow>=12.1.0" \
+    "pydicom>=3.0.1" \
+    "pytest>=9.0.2" \
+    "tensorflow==2.15.0" \
+    "numpy<2"
+
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000

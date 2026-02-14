@@ -335,18 +335,136 @@ uv run pytest tests/ -v
 
 ## Docker
 
-Puedes ejecutar la aplicación web dentro de un contenedor Docker para un despliegue aislado y consistente.
+Puedes ejecutar la aplicación web dentro de un contenedor Docker para un despliegue aislado, consistente y multiplataforma.
 
-1.  **Construye la imagen Docker:**
-    ```bash
-    docker build -t uao-neumonia-gui -f Dockerfile-gui .
-    ```
+### Requisitos Previos
 
-2.  **Ejecuta el contenedor:**
-    ```bash
-    docker run --rm -p 8000:8000 uao-neumonia-gui
-    ```
-    La aplicación estará disponible en [http://localhost:8000](http://localhost:8000).
+- **Docker Desktop** instalado y corriendo en tu sistema
+  - macOS: Descarga desde [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+  - Windows: Descarga desde [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+  - Linux: Instala Docker Engine siguiendo la [documentación oficial](https://docs.docker.com/engine/install/)
+
+### Instrucciones de Uso
+
+#### 1. Navegar al directorio del proyecto
+
+Abre una terminal y navega a la ruta donde se encuentra el `Dockerfile`:
+
+```bash
+cd /ruta/a/UAO-Neumonia-Proyecto-1
+```
+
+Verifica que estés en el directorio correcto:
+```bash
+ls Dockerfile
+```
+
+#### 2. Construir la imagen Docker
+
+Ejecuta el siguiente comando para construir la imagen (esto puede tomar varios minutos la primera vez):
+
+```bash
+docker build -t neumonia-detector:latest .
+```
+
+**Nota:** El punto (`.`) al final es importante, indica que el contexto de construcción es el directorio actual.
+
+#### 3. Ejecutar el contenedor
+
+**Opción A - Ejecutar en primer plano (ver logs en tiempo real):**
+```bash
+docker run --rm -p 8000:8000 --name neumonia-app neumonia-detector:latest
+```
+
+**Opción B - Ejecutar en segundo plano (modo detached):**
+```bash
+docker run -d -p 8000:8000 --name neumonia-app neumonia-detector:latest
+```
+
+#### 4. Acceder a la aplicación
+
+Abre tu navegador web y visita:
+```
+http://localhost:8000
+```
+
+La interfaz web del detector de neumonía estará disponible.
+
+### Comandos Útiles
+
+**Ver contenedores en ejecución:**
+```bash
+docker ps
+```
+
+**Ver todos los contenedores (incluidos los detenidos):**
+```bash
+docker ps -a
+```
+
+**Ver logs del contenedor:**
+```bash
+docker logs neumonia-app
+
+# Ver logs en tiempo real
+docker logs -f neumonia-app
+```
+
+**Detener el contenedor:**
+```bash
+docker stop neumonia-app
+```
+
+**Reiniciar el contenedor:**
+```bash
+docker restart neumonia-app
+```
+
+**Eliminar el contenedor:**
+```bash
+# Primero detenerlo si está corriendo
+docker stop neumonia-app
+
+# Luego eliminarlo
+docker rm neumonia-app
+```
+
+**Eliminar la imagen:**
+```bash
+docker rmi neumonia-detector:latest
+```
+
+### Características del Contenedor
+
+- **Puerto expuesto:** 8000
+- **Plataforma:** Linux (compatible con macOS ARM, Windows, Linux)
+- **TensorFlow:** Versión optimizada para CPU (`tensorflow-cpu-aws` en ARM)
+- **OpenCV:** `opencv-python-headless` (sin GUI, optimizado para contenedores)
+- **Tamaño de imagen:** ~2.5 GB (incluye TensorFlow y todas las dependencias)
+
+### Solución de Problemas
+
+**El contenedor no inicia:**
+1. Verifica que Docker Desktop esté corriendo
+2. Revisa los logs: `docker logs neumonia-app`
+3. Verifica que el puerto 8000 no esté ocupado: `lsof -i :8000` (macOS/Linux)
+
+**Error "port is already allocated":**
+- Otro proceso está usando el puerto 8000
+- Usa un puerto diferente: `docker run -d -p 8080:8000 --name neumonia-app neumonia-detector:latest`
+- Accede en: `http://localhost:8080`
+
+**Reconstruir después de cambios en el código:**
+```bash
+# Detener y eliminar contenedor anterior
+docker stop neumonia-app && docker rm neumonia-app
+
+# Reconstruir imagen sin caché
+docker build --no-cache -t neumonia-detector:latest .
+
+# Ejecutar nuevo contenedor
+docker run -d -p 8000:8000 --name neumonia-app neumonia-detector:latest
+```
 
 ## Contribuidores
 

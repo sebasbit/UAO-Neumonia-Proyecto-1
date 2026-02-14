@@ -1,21 +1,49 @@
 import numpy as np
+import os
+import tensorflow as tf
+from src import read_img, preprocess_img, grad_cam
 
-from src import read_img, preprocess_img, load_model, grad_cam
+_model = None
+_model_path = None
+_model_mtime = None
 
-_model = None  # Variable global para cachear el modelo y evitar recargas innecesarias.
+
+def set_current_model_path(path: str):
+    """Sets the path for the model to be used by the integrator."""
+    global _model_path, _model, _model_mtime
+    if path != _model_path:
+        _model_path = path
+        _model = None  # Invalidate cache
+        _model_mtime = None
 
 
-def get_model():
-    """
-    Carga el modelo de Keras y lo almacena en una variable global.
-    Si el modelo ya está cargado, lo devuelve directamente.
+def get_current_model_path() -> str | None:
+    """Obtiene la ruta del modelo actual."""
+    return _model_path
 
-    Returns:
-        tf.keras.Model: El modelo de red neuronal cargado.
-    """
-    global _model
+
+def get_model(model_path: str | None = None) -> tf.keras.Model:
+    """Carga el modelo de Keras con caché."""
+    global _model, _model_path, _model_mtime
+    
+    path_to_load = model_path or _model_path
+    if not path_to_load:
+        raise ValueError("Model path is not set. Call set_current_model_path() first.")
+
+    if not os.path.exists(path_to_load):
+        raise FileNotFoundError(f"Model file not found at {path_to_load}")
+
+    mtime = os.path.getmtime(path_to_load)
+    if _model is not None and _model_path == path_to_load and _model_mtime == mtime:
+        return _model
+
+    _model = tf.keras.models.load_model(path_to_load, compile=False)
+    _model_path = path_to_load
+    _model_mtime = mtime
+    
     if _model is None:
-        _model = load_model.load_model()
+        raise ValueError(f"Failed to load model from {path_to_load}")
+
     return _model
 
 

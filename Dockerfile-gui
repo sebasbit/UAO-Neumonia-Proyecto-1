@@ -1,0 +1,38 @@
+# Base con Python 3.10 (más compatible con TensorFlow 2.15 y con Tkinter en muchos casos)
+FROM python:3.10-bookworm
+
+# Trae uv y uvx desde la imagen oficial (mejor que instalar con curl en cada build)
+# Astral documenta este patrón: copiar binarios desde ghcr.io/astral-sh/uv :contentReference[oaicite:1]{index=1}
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Dependencias del sistema típicas para:
+# - opencv (libGL + glib)
+# - entornos gráficos (Tk/X11 libs) si vas a intentar UI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    tk \
+    tcl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copia el proyecto
+COPY . /app
+
+# En contenedor normalmente NO necesitas dependencias de desarrollo
+# Astral indica UV_NO_DEV=1 para deshabilitar dev deps en builds :contentReference[oaicite:2]{index=2}
+ENV UV_NO_DEV=1
+
+# Instala el proyecto y dependencias desde uv.lock y valida que esté al día
+# (flag --locked es la forma recomendada para "fail fast" en Docker/CI) :contentReference[oaicite:3]{index=3}
+RUN uv sync --locked
+
+# Opción A: activar el venv por PATH (recomendado por Astral) :contentReference[oaicite:4]{index=4}
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "detector_neumonia.py"]

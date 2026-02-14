@@ -1,193 +1,94 @@
-# Proyecto de Neumonía - Curso Desarrollo de Proyectos de Inteligencia Artificial
+# Proyecto de Detección de Neumonía con IA
 
-Este proyecto consiste en una aplicación de escritorio diseñada para apoyar el diagnóstico de neumonía mediante el procesamiento de imágenes de rayos X (DICOM y JPG). El sistema ha sido refactorizado para garantizar una arquitectura modular y escalable.
+Este proyecto es una aplicación web diseñada para apoyar el diagnóstico de neumonía a partir de imágenes de rayos X. Utiliza una red neuronal convolucional (CNN) para clasificar las imágenes en tres categorías (Bacteriana, Normal, Viral) y emplea Grad-CAM para generar un mapa de calor que resalta las áreas de la imagen más relevantes para la predicción.
 
-## Requisitos del Sistema
-* **Versión de Python:** 3.10 o superior.
-* **Dependencias principales:** OpenCV, Pydicom, Pillow, Pytest, TensorFlow.
+## Características
+
+- **Clasificación de Neumonía:** Diagnóstico asistido por IA para neumonía bacteriana, viral o estado normal.
+- **Visualización Explicativa (XAI):** Generación de mapas de calor (Grad-CAM) para interpretar las decisiones del modelo.
+- **Interfaz Web Moderna:** UI intuitiva y fácil de usar, accesible desde cualquier navegador web moderno.
+- **Soporte Multiformato:** Compatible con imágenes médicas `.dcm` (DICOM), `.jpg`, `.jpeg` y `.png`.
+- **Carga Dinámica de Modelos:** Permite al usuario cargar su propio modelo `.h5`.
+- **Generación de Reportes:** Exporta resultados a un archivo `.csv` y genera un reporte en formato `.pdf`.
+- **Arquitectura Modular:** Código desacoplado en módulos para facilitar el mantenimiento y la escalabilidad.
+- **Contenerización:** Listo para ser ejecutado en un entorno aislado con Docker.
+
+## Instalación y Uso
+
+A continuación se detallan los pasos para poner en marcha la aplicación.
+
+### Requisitos Previos
+
+- **Python 3.10** o superior.
+- **uv:** Una herramienta rápida para la gestión de paquetes de Python. Instálala siguiendo la [guía oficial de instalación de uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Pasos de Ejecución
+
+1.  **Clona el repositorio y navega al directorio del proyecto.**
+
+2.  **Sincroniza las dependencias del proyecto:**
+    Abra una terminal en el directorio raíz del proyecto y ejecute:
+    ```bash
+    uv sync
+    ```
+    > **Nota:** Si encuentras errores con TensorFlow en Windows, puedes instalar una versión compatible explícitamente:
+    > `uv pip install tensorflow==2.15.0`
+
+3.  **Ejecuta la aplicación web:**
+    ```bash
+    uv run python web.py
+    ```
+
+4.  **Abre tu navegador:**
+    Accede a [http://127.0.0.1:8000](http://127.0.0.1:8000) para empezar a utilizar la aplicación.
+
+### Flujo de la Interfaz Web
+
+1.  **Cargar Modelo:** Haz clic en **"Cargar modelo"** para subir un archivo de modelo `.h5`. Sin un modelo, la predicción no funcionará.
+2.  **Ingresar Cédula:** Introduce el número de identificación del paciente.
+3.  **Cargar Imagen:** Selecciona una imagen de rayos X (`.dcm`, `.jpg`, etc.).
+    - Puedes encontrar imágenes de prueba en [este enlace de Google Drive](https://drive.google.com/drive/folders/1WOuL0wdVC6aojy8IfssHcqZ4Up14dy0g?usp=drive_link).
+4.  **Predecir:** Haz clic en **"Predecir"**. El sistema procesará la imagen, mostrará el resultado (diagnóstico y probabilidad) y el mapa de calor Grad-CAM.
+5.  **Guardar y Exportar:**
+    - **Guardar (CSV):** Almacena los resultados en `historial.csv`.
+    - **Descargar PDF:** Genera un reporte en PDF con la información del diagnóstico.
+    - **Borrar:** Limpia la interfaz para iniciar un nuevo análisis.
 
 ## Estructura del Proyecto
+
+El proyecto está organizado en una arquitectura modular para separar responsabilidades:
+
 ```
-UAO-Neumonia/
+UAO-Neumonia-Proyecto-1/
 │
-├── src/                        
-│   ├── read_img.py             
-│   ├── preprocess_img.py       
-│   ├── load_model.py           
-│   ├── grad_cam.py             
-│   └── integrator.py           
+├── src/
+│   ├── __init__.py
+│   ├── grad_cam.py         # Lógica de Grad-CAM
+│   ├── integrator.py       # Orquesta el pipeline de predicción
+│   ├── load_model.py       # Utilidades para la carga de modelos
+│   ├── preprocess_img.py   # Funciones de preprocesamiento de imágenes
+│   └── read_img.py         # Lectura de imágenes DICOM y estándar
 │
-├── tests/                      
-│   ├── test_read_img.py        
-│   ├── test_preprocess_img.py   
-│   ├── test_load_model.py      
-│   └── test_grad_cam.py        
+├── tests/
+│   ├── test_grad_cam.py
+│   ├── test_load_model.py
+│   ├── test_preprocess_img.py
+│   └── test_read_img.py
 │
-├── docs/                       
-│   ├── flujo_app.png 
-│   ├── arquitectura_modulos.png
-│
-├── models/                     
-│   └── WilhemNet86.h5          
-│
-├── web.py        
-├── requirements.txt            
-├── Dockerfile                  
-├── LICENSE                     
-└── README.md                   
+├── web.py                  # Aplicación principal (servidor web y UI)
+├── detector_neumonia.py    # UI de escritorio original (Tkinter)
+├── requirements.txt
+├── Dockerfile              # Dockerfile para la interfaz web
+├── Dockerfile-gui          # Dockerfile para la interfaz web
+├── LICENSE
+└── README.md
 ```
 
-## Uso de la herramienta:
+## Documentación de Scripts
 
-A continuación le explicaremos cómo empezar a utilizarla.
+### 1. `web.py` (Aplicación Principal)
 
-Requerimientos necesarios para el funcionamiento:
-
-- Instale UV para Windows siguiendo las siguientes instrucciones: https://docs.astral.sh/uv/getting-started/installation/
-- Abra la terminal y ejecute las siguientes instrucciones:
-  ```
-  uv sync
-  uv run web.py
-  ```
-  
-  En caso de errores por la librería Tensorflow en Windows, ejecutar:
-  ```
-  uv pip install tensorflow==2.15.0
-  ```
-
-### Uso de la Interfaz Gráfica:
-
-La interfaz implementa un **flujo de trabajo secuencial** que guía al usuario paso a paso, habilitando botones progresivamente para prevenir errores:
-
-#### Flujo de Trabajo:
-
-**1. Estado Inicial (al abrir la aplicación):**
-   - Solo el botón **"Cargar Imagen"** está habilitado
-   - Todos los demás controles están deshabilitados
-
-**2. Cargar Imagen:**
-   - Presione el botón **"Cargar Imagen"**
-   - Seleccione una imagen de rayos X del explorador de archivos (formatos: `.dcm`, `.jpg`, `.jpeg`, `.png`)
-   - Imágenes de prueba disponibles en: https://drive.google.com/drive/folders/1WOuL0wdVC6aojy8IfssHcqZ4Up14dy0g?usp=drive_link
-   - La imagen se visualizará en el panel izquierdo
-   - Se habilitará automáticamente el campo **"Cédula Paciente"**
-
-**3. Ingresar Cédula del Paciente:**
-   - El campo de cédula ahora está habilitado (con foco automático)
-   - Ingrese el número de identificación del paciente
-   - El botón **"Predecir"** se habilitará automáticamente al ingresar texto
-
-**4. Ejecutar Predicción:**
-   - Presione el botón **"Predecir"**
-   - Espere unos segundos mientras el sistema:
-     - Preprocesa la imagen (resize, CLAHE, normalización)
-     - Ejecuta el modelo CNN WilhemNet86
-     - Genera el mapa de calor Grad-CAM
-   - Se mostrarán los resultados:
-     - **Panel derecho:** Imagen con mapa de calor superpuesto
-     - **Resultado:** Diagnóstico (bacteriana / normal / viral)
-     - **Probabilidad:** Porcentaje de confianza del modelo
-   - Se habilitarán los botones **"Guardar"**, **"PDF"** y **"Borrar"**
-
-**5. Guardar Resultados:**
-   - Presione el botón **"Guardar"**
-   - Los datos se almacenarán en `historial.csv` (formato: cédula-diagnóstico-probabilidad)
-   - Se mostrará un mensaje con la ruta del archivo guardado
-
-**6. Generar Reporte PDF:**
-   - Presione el botón **"PDF"**
-   - Se generará un archivo PDF con la captura de pantalla de los resultados
-   - Se mostrará un mensaje con la ruta del archivo generado
-   - **Nota para macOS:** Si aparece un error, verifique los permisos de captura de pantalla en:
-     - *Configuración del Sistema > Privacidad y Seguridad > Grabación de Pantalla*
-     - Active los permisos para Terminal o Python
-
-**7. Limpiar / Nueva Consulta:**
-   - Presione el botón **"Borrar"**
-   - Se limpiará toda la información de la interfaz
-   - El flujo se reiniciará al estado inicial (solo "Cargar Imagen" habilitado)
-   - Listo para procesar un nuevo paciente
-
-#### Notas Importantes:
-- Los botones se habilitan **progresivamente** según el flujo
-- No puede predecir sin antes cargar una imagen e ingresar cédula
-- No puede guardar o generar PDF sin antes ejecutar una predicción
-- El botón "Borrar" resetea completamente la aplicación al estado inicial
-
----
-
-## Ejecución de Tests
-
-Para ejecutar los tests del proyecto, abra la terminal en el directorio del proyecto y ejecute el siguiente comando:
-
-  ```bash
-  uv run pytest
-  ```
-
----
-
-## Acerca del Modelo
-
-La red neuronal convolucional implementada (CNN) es basada en el modelo implementado por F. Pasa, V.Golkov, F. Pfeifer, D. Cremers & D. Pfeifer
-en su artículo Efcient Deep Network Architectures for Fast Chest X-Ray Tuberculosis Screening and Visualization.
-
-Está compuesta por 5 bloques convolucionales, cada uno contiene 3 convoluciones; dos secuenciales y una conexión 'skip' que evita el desvanecimiento del gradiente a medida que se avanza en profundidad.
-Con 16, 32, 48, 64 y 80 filtros de 3x3 para cada bloque respectivamente.
-
-Después de cada bloque convolucional se encuentra una capa de max pooling y después de la última una capa de Average Pooling seguida por tres capas fully-connected (Dense) de 1024, 1024 y 3 neuronas respectivamente.
-
-Para regularizar el modelo utilizamos 3 capas de Dropout al 20%; dos en los bloques 4 y 5 conv y otra después de la 1ra capa Dense.
-
-## Acerca de Grad-CAM
-
-Es una técnica utilizada para resaltar las regiones de una imagen que son importantes para la clasificación. Un mapeo de activaciones de clase para una categoría en particular indica las regiones de imagen relevantes utilizadas por la CNN para identificar esa categoría.
-
-Grad-CAM realiza el cálculo del gradiente de la salida correspondiente a la clase a visualizar con respecto a las neuronas de una cierta capa de la CNN. Esto permite tener información de la importancia de cada neurona en el proceso de decisión de esa clase en particular. Una vez obtenidos estos pesos, se realiza una combinación lineal entre el mapa de activaciones de la capa y los pesos, de esta manera, se captura la importancia del mapa de activaciones para la clase en particular y se ve reflejado en la imagen de entrada como un mapa de calor con intensidades más altas en aquellas regiones relevantes para la red con las que clasificó la imagen en cierta categoría.
-
-## licencia:
-Este proyecto se distribuye bajo la licencia MIT. Consulte el archivo LICENSE para más información.
-
-## Integrantes:
-
-- **ALEXANDER CALAMBAS RAMIREZ** 
-- **OSCAR PORTELA OSPINA** 
-- **SEBASTIAN TORRES CABRERA** 
-- **ANGELO PARRA CORTEZ** 
-
----
-
-## Documentación Detallada de Scripts
-
-### 1. web.py (Aplicación Principal)
-
-**Descripción:** Interfaz WEB de usuario para el diagnóstico de neumonía.
-
-**Funciones principales:**
-
-- `predict(array)`: Pipeline completo de predicción
-  - Preprocesa la imagen usando preprocess_img.preprocess_image()
-  - Carga el modelo usando load_model.load_model()
-  - Realiza la predicción (clasificación en 3 clases: bacteriana, normal, viral)
-  - Calcula la probabilidad de la predicción
-  - Genera el mapa de calor Grad-CAM usando grad_cam.grad_cam()
-  - Retorna: (etiqueta, probabilidad, heatmap)
-
-**Clase App:**
-
-Métodos:
-- `__init__()`: Inicializa la interfaz gráfica con dimensiones 815x560 píxeles
-- `load_img_file()`: Abre explorador de archivos, carga imagen DICOM/JPG/PNG usando read_img.load_image_file()
-- `run_model()`: Ejecuta predict() y muestra resultados en la UI
-- `save_results_csv()`: Guarda cédula, diagnóstico y probabilidad en historial.csv
-- `create_pdf()`: Captura pantalla y genera reporte PDF
-- `delete()`: Limpia la interfaz para nuevo análisis
-
-**Componentes UI:**
-- Campos de entrada: Cédula del paciente
-- Visualización: Imagen original + Grad-CAM superpuesto
-- Botones: Cargar Imagen, Predecir, Guardar, PDF, Borrar
-
----
+Interfaz web de usuario para el diagnóstico de neumonía.
 
 ### 2. src/read_img.py (Lectura de Imágenes Médicas)
 
@@ -217,8 +118,6 @@ Métodos:
 - ValueError: Formato de archivo no soportado
 
 **Formatos soportados:** .dcm, .jpg, .jpeg, .png
-
----
 
 ### 3. src/preprocess_img.py (Preprocesamiento de Imágenes)
 
@@ -258,8 +157,6 @@ Métodos:
 
 **Flujo completo:** Imagen original → 512x512 → Escala de grises → CLAHE → Normalización [0,1] → Tensor batch
 
----
-
 ### 4. src/load_model.py (Carga del Modelo CNN)
 
 **Descripción:** Módulo para carga segura del modelo pre-entrenado WilhemNet86 con validaciones de integridad.
@@ -286,8 +183,6 @@ Métodos:
 - OSError: Problemas de permisos o lectura
 
 **Ubicación del modelo:** Raíz del proyecto / conv_MLP_84.h5 (112 MB)
-
----
 
 ### 5. src/grad_cam.py (Visualización Explicativa)
 
@@ -328,8 +223,6 @@ Métodos:
 
 **Interpretación:** Las áreas brillantes (rojas/amarillas) indican regiones de mayor importancia para la clasificación del modelo.
 
----
-
 ### 6. tests/test_read_img.py (Tests de Lectura)
 
 **Descripción:** Suite de pruebas unitarias para validar la lectura de imágenes médicas.
@@ -350,8 +243,6 @@ Métodos:
 
 **Cobertura:** Lectura DICOM, lectura estándar, manejo de errores
 
----
-
 ### 7. tests/test_preprocess_img.py (Tests de Preprocesamiento)
 
 **Descripción:** Suite de pruebas para validar el pipeline de preprocesamiento.
@@ -369,8 +260,6 @@ Métodos:
   - Verifica rango [0, 1]
 
 **Cobertura:** Todas las funciones de preprocesamiento + pipeline integrado
-
----
 
 ### 8. tests/test_load_model.py (Tests de Carga de Modelo)
 
@@ -392,8 +281,6 @@ Métodos:
 - `test_load_model_no_predict_method()`: Validación de método 'predict'
 
 **Cobertura:** Carga exitosa, validaciones de integridad, manejo de errores
-
----
 
 ### 9. tests/test_grad_cam.py (Tests de Grad-CAM)
 
@@ -420,54 +307,54 @@ Métodos:
 
 **Cobertura:** Generación de heatmap, superposición, pipeline completo, manejo de errores
 
----
+Módulo que integra todos los pasos del pipeline: carga de imagen, preprocesamiento, predicción y generación de Grad-CAM.
 
-**Comando para ejecutar tests:**
+## Acerca del Modelo
+
+La red neuronal convolucional implementada (CNN) es basada en el modelo implementado por F. Pasa, V.Golkov, F. Pfeifer, D. Cremers & D. Pfeifer en su artículo Efcient Deep Network Architectures for Fast Chest X-Ray Tuberculosis Screening and Visualization.
+
+Está compuesta por 5 bloques convolucionales, cada uno contiene 3 convoluciones; dos secuenciales y una conexión 'skip' que evita el desvanecimiento del gradiente a medida que se avanza en profundidad. Con 16, 32, 48, 64 y 80 filtros de 3x3 para cada bloque respectivamente.
+
+Después de cada bloque convolucional se encuentra una capa de max pooling y después de la última una capa de Average Pooling seguida por tres capas fully-connected (Dense) de 1024, 1024 y 3 neuronas respectivamente.
+
+Para regularizar el modelo utilizamos 3 capas de Dropout al 20%; dos en los bloques 4 y 5 conv y otra después de la 1ra capa Dense.
+
+## Acerca de Grad-CAM
+
+Es una técnica utilizada para resaltar las regiones de una imagen que son importantes para la clasificación. Un mapeo de activaciones de clase para una categoría en particular indica las regiones de imagen relevantes utilizadas por la CNN para identificar esa categoría.
+
+Grad-CAM realiza el cálculo del gradiente de la salida correspondiente a la clase a visualizar con respecto a las neuronas de una cierta capa de la CNN. Esto permite tener información de la importancia de cada neurona en el proceso de decisión de esa clase en particular. Una vez obtenidos estos pesos, se realiza una combinación lineal entre el mapa de activaciones de la capa y los pesos, de esta manera, se captura la importancia del mapa de activaciones para la clase en particular y se ve reflejado en la imagen de entrada como un mapa de calor con intensidades más altas en aquellas regiones relevantes para la red con las que clasificó la imagen en cierta categoría.
+
+## Ejecución de Tests
+
+Para asegurar la calidad y el correcto funcionamiento de los módulos, puedes ejecutar la suite de pruebas automatizadas.
+
 ```bash
 uv run pytest tests/ -v
 ```
 
----
+## Docker
 
-## Nueva UI Web (sin dependencias extra)
+Puedes ejecutar la aplicación web dentro de un contenedor Docker para un despliegue aislado y consistente.
 
-Este repo traía una UI en Tkinter (`detector_neumonia.py`).  
-Ahora también incluye una UI web local: `web.py`.
+1.  **Construye la imagen Docker:**
+    ```bash
+    docker build -t uao-neumonia-gui -f Dockerfile-gui .
+    ```
 
-### ¿Por qué?
-- Evita problemas de Tkinter/X11 cuando se ejecuta en Docker o en máquinas sin GUI.
-- Facilita el uso por terceros desde un navegador.
+2.  **Ejecuta el contenedor:**
+    ```bash
+    docker run --rm -p 8000:8000 uao-neumonia-gui
+    ```
+    La aplicación estará disponible en [http://localhost:8000](http://localhost:8000).
 
-### Cómo ejecutar
+## Contribuidores
 
-1) Instalar dependencias:
-```bash
-uv sync
-```
+- **ALEXANDER CALAMBAS RAMIREZ**
+- **OSCAR PORTELA OSPINA**
+- **SEBASTIAN TORRES CABRERA**
+- **ANGELO PARRA CORTEZ**
 
-2) Ejecutar servidor web:
-```bash
-uv run python web.py
-```
+## Licencia
 
-3) Abrir:
-- http://127.0.0.1:8000
-
-### Flujo de uso
-1) **Cargar modelo (.h5)** (botón “Cargar modelo”)
-2) Cargar imagen (.dcm/.jpg/.png)
-3) “Predecir”
-4) (Opcional) Guardar CSV / Descargar PDF
-
-> Nota: si el modelo que subes no tiene la capa `conv10_thisone`, el Grad-CAM no podrá generarse y la UI lo indicará.
-
----
-
-## Docker (opcional)
-
-Se dejó un `Dockerfile.web` para correr la UI web dentro de un contenedor.
-
-```bash
-docker build -t uao-neumonia-web .
-docker run --rm -p 8000:8000 uao-neumonia-web
-```
+Este proyecto se distribuye bajo la licencia MIT. Consulta el archivo `LICENSE` para más información.
